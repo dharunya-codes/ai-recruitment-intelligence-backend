@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { sampleResumeScore } from '../data/mockData';
+import { useApp } from '../context/AppContext';
 import { ResumeScore } from '../components/ResumeScore';
 import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/ProgressBar';
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 
 export const ResumeAnalysisPage: React.FC = () => {
+  const { candidateJobDescription } = useApp();
   const [filterStatus, setFilterStatus] = useState<'all' | 'Good' | 'Needs Improvement'>('all');
 
   const sectionsList = Object.entries(sampleResumeScore.sections).map(([key, section]) => ({
@@ -52,6 +54,10 @@ export const ResumeAnalysisPage: React.FC = () => {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 text-xs text-slate-700">
+        <strong className="text-red-700">Analysis target:</strong> {candidateJobDescription.jobTitle} at {candidateJobDescription.companyName}
       </div>
 
       {/* Top Overview Score Card */}

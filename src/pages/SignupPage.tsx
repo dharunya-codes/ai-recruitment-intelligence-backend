@@ -3,22 +3,36 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { RoleType } from '../types';
 import { Sparkles, ArrowRight, UserCheck, Briefcase, Mail, Lock, User } from 'lucide-react';
+import { isValidEmail, isValidIndianPhone, isValidName } from '../utils/validators';
 
 export const SignupPage: React.FC = () => {
-  const { login, setCandidate, candidate } = useApp();
+  const { setCandidate, candidate } = useApp();
   const navigate = useNavigate();
 
   const [name, setName] = useState('Rose Infanta');
   const [email, setEmail] = useState('rose.infanta@example.com');
   const [password, setPassword] = useState('password123');
   const [confirmPassword, setConfirmPassword] = useState('password123');
+  const [phone, setPhone] = useState('9876543210');
   const [role, setRoleSelection] = useState<RoleType>('candidate');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
       setError('Please fill in all required fields.');
+      return;
+    }
+    if (!isValidName(name)) {
+      setError('Please enter a valid name.');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!isValidIndianPhone(phone)) {
+      setError('Please enter a valid 10-digit phone number.');
       return;
     }
     if (password !== confirmPassword) {
@@ -26,9 +40,8 @@ export const SignupPage: React.FC = () => {
       return;
     }
 
-    setCandidate({ ...candidate, name, email });
-    login(email, role);
-    navigate(role === 'candidate' ? '/candidate/dashboard' : '/recruiter/dashboard');
+    setCandidate({ ...candidate, name, email, phone });
+    navigate('/login');
   };
 
   return (
@@ -53,6 +66,11 @@ export const SignupPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Role Selection */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" required className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600" />
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Select Your Role

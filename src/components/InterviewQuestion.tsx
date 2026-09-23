@@ -32,7 +32,7 @@ export const InterviewQuestion: React.FC<InterviewQuestionProps> = ({
             Question {question.number} of {totalQuestions}
           </span>
           <span className="text-xs font-semibold text-slate-500">
-            Skill gap: <strong className="text-slate-800">{question.skill}</strong>
+            Testing: <strong className="text-slate-800">{question.skill}</strong>
           </span>
         </div>
 
@@ -47,7 +47,7 @@ export const InterviewQuestion: React.FC<InterviewQuestionProps> = ({
       <div className="my-6">
         <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-bold text-sm">
-            GAP
+            Q
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">

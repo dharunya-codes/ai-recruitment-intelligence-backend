@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useEffect, useState } from 'react';
-import { CandidateProfile, RecruiterProfile, RoleType } from '../types';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { CandidateJobDescription, CandidateProfile, RecruiterJobDescription, RecruiterProfile, RoleType } from '../types';
 import { sampleCandidate } from '../data/mockData';
 
 interface ToastInfo {
@@ -19,6 +19,10 @@ interface AppContextType {
   setUploadedFile: (file: File | null) => void;
   targetRole: string;
   setTargetRole: (role: string) => void;
+  candidateJobDescription: CandidateJobDescription;
+  setCandidateJobDescription: React.Dispatch<React.SetStateAction<CandidateJobDescription>>;
+  recruiterJobDescription: RecruiterJobDescription;
+  setRecruiterJobDescription: React.Dispatch<React.SetStateAction<RecruiterJobDescription>>;
   interviewAnswers: Record<string, string>;
   setInterviewAnswer: (questionId: string, answer: string) => void;
   interviewProgressIndex: number;
@@ -30,6 +34,9 @@ interface AppContextType {
   isLoggedIn: boolean;
   candidateAuthenticated: boolean;
   recruiterAuthenticated: boolean;
+  candidateProfileCompleted: boolean;
+  recruiterProfileCompleted: boolean;
+  completeProfile: (role: RoleType) => void;
   userEmail: string;
   login: (email: string, role: RoleType) => void;
   logout: (role?: RoleType) => void;
@@ -37,12 +44,22 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error('useApp must be used within an AppProvider');
+  return context;
+};
+
 let toastCounter = 0;
 const generateToastId = () => `toast-${++toastCounter}-${Date.now()}`;
 const candidateAuthKey = 'talentiq_candidate_authenticated';
 const recruiterAuthKey = 'talentiq_recruiter_authenticated';
+const candidateProfileCompletedKey = 'talentiq_candidate_profile_completed';
+const recruiterProfileCompletedKey = 'talentiq_recruiter_profile_completed';
 const candidateProfileKey = 'talentiq_candidate_profile';
 const recruiterProfileKey = 'talentiq_recruiter_profile';
+const candidateJobDescriptionKey = 'talentiq_candidate_job_description';
+const recruiterJobDescriptionKey = 'talentiq_recruiter_job_description';
 
 const readStoredBoolean = (key: string) =>
   typeof window !== 'undefined' && window.localStorage.getItem(key) === 'true';
@@ -75,6 +92,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }));
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [targetRole, setTargetRole] = useState<string>('Data Analyst');
+  const [candidateJobDescription, setCandidateJobDescription] = useState<CandidateJobDescription>(() =>
+    readStoredValue(candidateJobDescriptionKey, {
+      jobTitle: 'Data Analyst',
+      companyName: 'ABC Technologies',
+      description: 'Analyze business data using SQL, Python, Excel, Power BI, and statistics. Build reports, dashboards, and actionable insights for stakeholders.',
+    })
+  );
+  const [recruiterJobDescription, setRecruiterJobDescription] = useState<RecruiterJobDescription>(() =>
+    readStoredValue(recruiterJobDescriptionKey, {
+      jobTitle: 'Data Analyst', companyName: 'TalentIQ Client', description: '',
+      requiredSkills: ['Python', 'SQL', 'Excel', 'Power BI', 'Statistics'], minExperience: '1', education: "Bachelor's degree",
+    })
+  );
   const [interviewAnswers, setInterviewAnswers] = useState<Record<string, string>>({
     'iq-1':
       'In the Sales Analysis project, I imported the raw CSV records into Pandas DataFrames. First I checked for null values using isna().sum() and dropped duplicates. Then I converted the date string column into proper datetime objects and filled missing regional sales with median values.',
@@ -86,6 +116,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [recruiterAuthenticated, setRecruiterAuthenticated] = useState(() =>
     readStoredBoolean(recruiterAuthKey)
+  );
+  const [candidateProfileCompleted, setCandidateProfileCompleted] = useState(() =>
+    readStoredBoolean(candidateProfileCompletedKey)
+  );
+  const [recruiterProfileCompleted, setRecruiterProfileCompleted] = useState(() =>
+    readStoredBoolean(recruiterProfileCompletedKey)
   );
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() =>
     readStoredBoolean(candidateAuthKey) || readStoredBoolean(recruiterAuthKey)
@@ -101,6 +137,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     window.localStorage.setItem(recruiterProfileKey, JSON.stringify(recruiter));
   }, [recruiter]);
+
+  useEffect(() => {
+    window.localStorage.setItem(candidateJobDescriptionKey, JSON.stringify(candidateJobDescription));
+  }, [candidateJobDescription]);
+
+  useEffect(() => {
+    window.localStorage.setItem(recruiterJobDescriptionKey, JSON.stringify(recruiterJobDescription));
+  }, [recruiterJobDescription]);
 
   const setRole = useCallback((role: RoleType) => {
     setCurrentRole(role);
@@ -147,15 +191,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Logged in as ${role === 'recruiter' ? 'Recruiter' : 'Candidate'}`, 'success');
   };
 
+  const completeProfile = (role: RoleType) => {
+    if (role === 'candidate') {
+      setCandidateProfileCompleted(true);
+      window.localStorage.setItem(candidateProfileCompletedKey, 'true');
+    } else {
+      setRecruiterProfileCompleted(true);
+      window.localStorage.setItem(recruiterProfileCompletedKey, 'true');
+    }
+  };
+
   const logout = (role = currentRole) => {
     if (role === 'candidate') {
       setCandidateAuthenticated(false);
       window.localStorage.removeItem(candidateAuthKey);
-      window.localStorage.removeItem(candidateProfileKey);
+      
     } else {
       setRecruiterAuthenticated(false);
       window.localStorage.removeItem(recruiterAuthKey);
-      window.localStorage.removeItem(recruiterProfileKey);
+      
     }
     setIsLoggedIn(role === 'candidate' ? recruiterAuthenticated : candidateAuthenticated);
     showToast('Logged out successfully', 'info');
@@ -174,6 +228,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUploadedFile,
         targetRole,
         setTargetRole,
+        candidateJobDescription,
+        setCandidateJobDescription,
+        recruiterJobDescription,
+        setRecruiterJobDescription,
         interviewAnswers,
         setInterviewAnswer,
         interviewProgressIndex,
@@ -185,6 +243,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoggedIn,
         candidateAuthenticated,
         recruiterAuthenticated,
+        candidateProfileCompleted,
+        recruiterProfileCompleted,
+        completeProfile,
         userEmail,
         login,
         logout,
@@ -221,6 +282,5 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-export { useApp } from '../hooks/useApp';
 
 

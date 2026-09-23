@@ -10,6 +10,7 @@ import {
   SkillQuizQuestion,
   InterviewFeedbackSummary,
   FullReportData,
+  BulkResumeCandidate,
 } from '../types';
 
 export interface PublicResumeIssue {
@@ -597,6 +598,18 @@ const skillQuestionBank: Record<string, Omit<InterviewQuestionItem, 'id' | 'numb
     makeSkillQuestion('Machine Learning', 'What is classification used for?', ['A. Predicting categories', 'B. Sorting files by size', 'C. Drawing charts', 'D. Compressing images'], 'A. Predicting categories', 'Classification assigns observations to categories such as approved or declined.'),
     makeSkillQuestion('Machine Learning', 'What does overfitting mean?', ['A. Memorizing training data too closely', 'B. Having no input data', 'C. Using a small chart', 'D. Renaming a model'], 'A. Memorizing training data too closely', 'An overfit model performs well on training data but poorly on new data.'),
   ],
+  Communication: [
+    makeSkillQuestion('Communication', 'What makes an analytical finding easier for stakeholders to act on?', ['A. A clear insight with context and next step', 'B. More unexplained jargon', 'C. A longer spreadsheet only', 'D. Removing the evidence'], 'A. A clear insight with context and next step', 'Actionable communication connects the finding to its business meaning and next action.'),
+    makeSkillQuestion('Communication', 'What should you do when a stakeholder asks an ambiguous question?', ['A. Clarify the goal and success measure', 'B. Guess silently', 'C. Ignore the question', 'D. Change the dataset'], 'A. Clarify the goal and success measure', 'Clarifying the intended decision prevents analysis from solving the wrong problem.'),
+    makeSkillQuestion('Communication', 'Which structure helps explain a project result?', ['A. Situation, action, result', 'B. Tools only', 'C. Code without context', 'D. A list of unrelated claims'], 'A. Situation, action, result', 'A structured explanation shows the problem, contribution, and outcome.'),
+    makeSkillQuestion('Communication', 'How should uncertainty in a result be presented?', ['A. State assumptions and limitations clearly', 'B. Hide all limitations', 'C. Claim certainty without evidence', 'D. Remove the result'], 'A. State assumptions and limitations clearly', 'Transparent limitations help stakeholders interpret a result responsibly.'),
+  ],
+  Tableau: [
+    makeSkillQuestion('Tableau', 'Which Tableau feature is commonly used to combine views interactively?', ['A. Dashboard', 'B. Terminal', 'C. Compiler', 'D. File Explorer'], 'A. Dashboard', 'A Tableau dashboard combines worksheets and interactive controls in one view.'),
+    makeSkillQuestion('Tableau', 'What is a Tableau filter used for?', ['A. Restricting the data shown', 'B. Encrypting the workbook', 'C. Installing a driver', 'D. Writing Python code'], 'A. Restricting the data shown', 'Filters limit the records or values displayed in a view.'),
+    makeSkillQuestion('Tableau', 'Which chart is useful for comparing categories in Tableau?', ['A. Bar chart', 'B. Paragraph', 'C. Audio track', 'D. Folder tree'], 'A. Bar chart', 'Bar charts make category comparisons straightforward.'),
+    makeSkillQuestion('Tableau', 'What does a calculated field provide?', ['A. A derived value based on an expression', 'B. A new monitor', 'C. A password reset', 'D. A file backup'], 'A. A derived value based on an expression', 'Calculated fields derive analytical values from existing data.'),
+  ],
 };
 
 export const generateSkillQuiz = (missingSkills: string[]): SkillQuizQuestion[] => {
@@ -639,6 +652,30 @@ export const getSkillAssessmentQuestions = (): InterviewQuestionItem[] => {
     const bank = skillQuestionBank[skill] || fallbackQuestions(skill);
     const template = bank[index % bank.length];
     return { ...template, id: `gap-iq-${index + 1}`, number: index + 1 };
+  });
+};
+
+export const getRoleInterviewQuestions = (
+  jobTitle: string,
+  description: string,
+  requiredSkills: string[] = []
+): InterviewQuestionItem[] => {
+  const source = `${jobTitle} ${description} ${requiredSkills.join(' ')}`.toLowerCase();
+  const supportedSkills = Object.keys(skillQuestionBank);
+  const detectedSkills = supportedSkills.filter((skill) => source.includes(skill.toLowerCase()));
+  const skills = detectedSkills.length ? detectedSkills : [jobTitle || 'Data Analysis'];
+
+  return Array.from({ length: 10 }, (_, index) => {
+    const skill = skills[index % skills.length];
+    const bank = skillQuestionBank[skill] || fallbackQuestions(skill);
+    const template = bank[index % bank.length];
+    return {
+      ...template,
+      id: `role-iq-${index + 1}`,
+      number: index + 1,
+      context: `Role-based practice question for the selected ${jobTitle || 'target'} Job Description.`,
+      targetRole: jobTitle || 'Target Role',
+    };
   });
 };
 
@@ -739,5 +776,55 @@ export const sampleFullReport: FullReportData = {
   generatedDate: '2025-02-28',
   readinessLevel: 'Moderate',
 };
+
+const bulkCandidateNames = [
+  'Aarav Mehta', 'Maya Chen', 'Liam Carter', 'Sofia Patel', 'Noah Williams',
+  'Anika Rao', 'Ethan Brooks', 'Zoya Khan', 'Lucas Martin', 'Isha Nair',
+  'Daniel Kim', 'Leah Johnson', 'Arjun Shah', 'Grace Wilson', 'Mateo Garcia',
+  'Nora Adams', 'Kabir Menon', 'Olivia Davis', 'Rohan Iyer', 'Emma Taylor',
+  'Vikram Singh', 'Chloe Brown', 'Aditya Das', 'Mia Anderson', 'Neil Thomas',
+  'Sara Joseph', 'Henry Moore', 'Diya Kapoor', 'James Lee', 'Aanya Verma',
+  'Benjamin Clark', 'Meera Pillai', 'Oliver Hall', 'Tara Sen', 'William Scott',
+  'Nisha George', 'Alexander Young', 'Riya Bhat', 'Michael Green', 'Pooja Shah',
+  'Samuel Baker', 'Kavya Roy', 'David Nelson', 'Aditi Suresh', 'Joseph Hill',
+  'Ira Bose', 'Matthew Wright', 'Tanvi Desai', 'Christopher King', 'Sana Ali',
+];
+
+const bulkRoles = ['Data Analyst', 'Frontend Developer', 'Product Analyst', 'Data Engineer', 'Machine Learning Engineer'];
+const bulkLocations = ['Bengaluru, India', 'Chennai, India', 'Hyderabad, India', 'Pune, India', 'Remote'];
+const bulkSkillSets = [
+  ['Python', 'SQL', 'Excel', 'Power BI'],
+  ['React', 'TypeScript', 'CSS', 'Testing'],
+  ['SQL', 'Python', 'Excel', 'Statistics'],
+  ['Python', 'SQL', 'Spark', 'AWS'],
+  ['Python', 'Pandas', 'Scikit-learn', 'Machine Learning'],
+];
+
+export const sampleBulkResumeCandidates: BulkResumeCandidate[] = bulkCandidateNames.map((name, index) => {
+  const skills = bulkSkillSets[index % bulkSkillSets.length];
+  const score = 62 + ((index * 7) % 34);
+  const status: BulkResumeCandidate['status'] = index % 7 === 0 ? 'Needs Review' : index % 5 === 0 ? 'Processing' : 'Analyzed';
+  return {
+    id: `bulk-cand-${String(index + 1).padStart(3, '0')}`,
+    name,
+    email: `${name.toLowerCase().replace(/ /g, '.')}@example.com`,
+    phone: `+91 90000 ${String(10000 + index).slice(-5)}`,
+    location: bulkLocations[index % bulkLocations.length],
+    resumeFile: `${name.replace(/ /g, '_')}_Resume.pdf`,
+    targetRole: bulkRoles[index % bulkRoles.length],
+    experience: index % 6,
+    education: index % 2 === 0 ? 'B.S. Computer Science' : 'B.Tech Information Technology',
+    skills,
+    matchedSkills: skills.slice(0, 2 + (index % 3)),
+    missingSkills: skills.slice(2 + (index % 2)),
+    resumeScore: score,
+    skillMatch: Math.max(52, score - 4),
+    atsScore: Math.min(96, score + 8),
+    experienceMatch: Math.max(55, score - 1),
+    educationMatch: 72 + (index % 24),
+    evidenceStrength: score >= 85 ? 'Strong' : score >= 72 ? 'Medium' : 'Weak',
+    status,
+  };
+});
 
 

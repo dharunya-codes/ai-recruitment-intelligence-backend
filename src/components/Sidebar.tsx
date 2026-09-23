@@ -13,6 +13,7 @@ import {
   Users,
   UserCheck,
   UploadCloud,
+  Files,
   X,
 } from 'lucide-react';
 
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { to: '/candidate/skill-gap', label: 'Skill Gap', icon: Sparkles },
     { to: '/candidate/evidence', label: 'Evidence Checker', icon: ShieldCheck },
     { to: '/candidate/job-match', label: 'Job Match', icon: Split },
+    { to: '/candidate/job-description', label: 'Job Description', icon: Briefcase },
     { to: '/interview', label: 'Mock Interview', icon: Mic },
     { to: '/reports', label: 'Reports', icon: FileBarChart2 },
   ];
@@ -42,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { to: '/recruiter/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/recruiter/job', label: 'Job Description', icon: Briefcase },
     { to: '/recruiter/candidates', label: 'Candidates', icon: Users },
+    { to: '/recruiter/bulk-resume-analysis', label: 'Bulk Resume Analysis', icon: Files },
     { to: '/recruiter/candidate/cand-001', label: 'Candidate Analysis', icon: UserCheck },
     { to: '/reports', label: 'Reports', icon: FileBarChart2 },
   ];

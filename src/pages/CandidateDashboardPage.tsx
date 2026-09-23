@@ -31,7 +31,7 @@ import {
 } from 'recharts';
 
 export const CandidateDashboardPage: React.FC = () => {
-  const { candidate, targetRole } = useApp();
+  const { candidate, targetRole, candidateJobDescription } = useApp();
 
   const radarData = [
     { subject: 'ATS Pass', value: sampleResumeScore.atsScore },
@@ -99,6 +99,11 @@ export const CandidateDashboardPage: React.FC = () => {
             <span>Start Mock Interview</span>
           </Link>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div><span className="text-[10px] font-bold uppercase tracking-wider text-red-700">Selected Job Description</span><h2 className="mt-1 text-base font-bold text-slate-900">{candidateJobDescription.jobTitle || targetRole}</h2><p className="text-xs text-slate-600">{candidateJobDescription.companyName || 'No company selected'} • Used across your candidate analysis flow</p></div>
+        <Link to="/candidate/job-description" className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700">Update Job Description</Link>
       </div>
 
       {/* Metric Cards Row */}

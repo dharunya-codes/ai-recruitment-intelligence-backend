@@ -13,10 +13,11 @@ import {
 } from 'lucide-react';
 
 export const JobDescriptionPage: React.FC = () => {
-  const { showToast } = useApp();
+  const { showToast, setRecruiterJobDescription } = useApp();
   const navigate = useNavigate();
 
   const [jobTitle, setJobTitle] = useState('Data Analyst');
+  const [companyName, setCompanyName] = useState('TalentIQ Client');
   const [department, setDepartment] = useState('Business Intelligence');
   const [minExperience, setMinExperience] = useState('1');
   const [education, setEducation] = useState("Bachelor's in Computer Science, Statistics, Mathematics or related quantitative field");
@@ -76,6 +77,7 @@ Responsibilities:
     setIsAnalyzing(true);
 
     try {
+      setRecruiterJobDescription({ jobTitle, companyName, description: jdText, requiredSkills, minExperience: minExperience, education });
       await createJobDescription({
         title: jobTitle,
         department,
@@ -133,6 +135,10 @@ Responsibilities:
               />
             </div>
 
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Company Name</label>
+              <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. ABC Technologies" required className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600" />
+            </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Department</label>
               <input

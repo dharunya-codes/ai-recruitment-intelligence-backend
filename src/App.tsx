@@ -14,7 +14,6 @@ import { LoginPage } from './pages/LoginPage';
 import { RoleSignInPage } from './pages/RoleSignInPage';
 import { SignupPage } from './pages/SignupPage';
 import { RoleSelectionPage } from './pages/RoleSelectionPage';
-import { PublicResumeCheckPage } from './pages/PublicResumeCheckPage';
 import { ReportsPage } from './pages/ReportsPage';
 
 // Candidate Suite Pages
@@ -24,12 +23,14 @@ import { ResumeAnalysisPage } from './pages/ResumeAnalysisPage';
 import { SkillGapPage } from './pages/SkillGapPage';
 import { EvidenceCheckerPage } from './pages/EvidenceCheckerPage';
 import { JobMatchPage } from './pages/JobMatchPage';
+import { CandidateJobDescriptionPage } from './pages/CandidateJobDescriptionPage';
 
 // Recruiter Suite Pages
 import { RecruiterDashboardPage } from './pages/RecruiterDashboardPage';
 import { JobDescriptionPage } from './pages/JobDescriptionPage';
 import { CandidateMatchingPage } from './pages/CandidateMatchingPage';
 import { CandidateDetailsPage } from './pages/CandidateDetailsPage';
+import { BulkResumeAnalysisPage } from './pages/BulkResumeAnalysisPage';
 
 // Mock Interview Pages
 import { MockInterviewPage } from './pages/MockInterviewPage';
@@ -48,7 +49,6 @@ export const App: React.FC = () => {
             <Route path="/recruiter/signin" element={<RoleSignInPage role="recruiter" />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/role-selection" element={<RoleSelectionPage />} />
-            <Route path="/public-resume-check" element={<PublicResumeCheckPage />} />
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
 
@@ -61,6 +61,7 @@ export const App: React.FC = () => {
             <Route path="skill-gap" element={<SkillGapPage />} />
             <Route path="evidence" element={<EvidenceCheckerPage />} />
             <Route path="job-match" element={<JobMatchPage />} />
+            <Route path="job-description" element={<CandidateJobDescriptionPage />} />
           </Route>
 
           {/* Recruiter Experience Suite */}
@@ -70,6 +71,7 @@ export const App: React.FC = () => {
             <Route path="job" element={<JobDescriptionPage />} />
             <Route path="candidates" element={<CandidateMatchingPage />} />
             <Route path="candidate/:id" element={<CandidateDetailsPage />} />
+            <Route path="bulk-resume-analysis" element={<BulkResumeAnalysisPage />} />
           </Route>
 
           {/* Distraction-Free AI Mock Interview Arena */}

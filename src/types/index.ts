@@ -62,6 +62,21 @@ export interface RecruiterProfile {
   yearsOfExperience: string;
 }
 
+export interface CandidateJobDescription {
+  jobTitle: string;
+  companyName: string;
+  description: string;
+}
+
+export interface RecruiterJobDescription {
+  jobTitle: string;
+  companyName: string;
+  description: string;
+  requiredSkills: string[];
+  minExperience: string;
+  education: string;
+}
+
 export interface QualitySection {
   title: string;
   status: SectionStatus;
@@ -163,6 +178,28 @@ export interface RecruiterCandidate {
   status: 'Under Review' | 'Interview Scheduled' | 'Shortlisted' | 'Archived';
   resumeFileName: string;
   analyzedDate: string;
+}
+
+export interface BulkResumeCandidate {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  resumeFile: string;
+  targetRole: string;
+  experience: number;
+  education: string;
+  skills: string[];
+  matchedSkills: string[];
+  missingSkills: string[];
+  resumeScore: number;
+  skillMatch: number;
+  atsScore: number;
+  experienceMatch: number;
+  educationMatch: number;
+  evidenceStrength: 'Strong' | 'Medium' | 'Weak';
+  status: 'Analyzed' | 'Processing' | 'Needs Review';
 }
 
 export interface JobVacancy {

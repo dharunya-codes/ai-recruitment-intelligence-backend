@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, UserCheck, Briefcase, Lock, Mail } from 'lucide-react';
+import { isValidEmail } from '../utils/validators';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,10 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError('Please provide your email and password.');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
       return;
     }
     navigate(selectedRole === 'candidate' ? '/candidate/signin' : '/recruiter/signin');
@@ -41,10 +46,7 @@ export const LoginPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => {
-                setSelectedRole('candidate');
-                navigate('/candidate/signin');
-              }}
+              onClick={() => setSelectedRole('candidate')}
               className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors shadow-2xs ${selectedRole === 'candidate' ? 'bg-[#E50914] border-[#E50914] text-white' : 'bg-[#17171D] border-[#27272A] text-[#A1A1AA] hover:border-[#E50914] hover:text-[#F5F5F5]'}`}
             >
               <UserCheck className="w-3.5 h-3.5" />
@@ -52,10 +54,7 @@ export const LoginPage: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setSelectedRole('recruiter');
-                navigate('/recruiter/signin');
-              }}
+              onClick={() => setSelectedRole('recruiter')}
               className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors shadow-2xs ${selectedRole === 'recruiter' ? 'bg-[#E50914] border-[#E50914] text-white' : 'bg-[#17171D] border-[#27272A] text-[#A1A1AA] hover:border-[#E50914] hover:text-[#F5F5F5]'}`}
             >
               <Briefcase className="w-3.5 h-3.5" />

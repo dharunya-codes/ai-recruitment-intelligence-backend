@@ -13,12 +13,10 @@ import {
 } from 'lucide-react';
 
 export const ResumeUploadPage: React.FC = () => {
-  const { uploadedFile, setUploadedFile, targetRole, setTargetRole, showToast } = useApp();
+  const { uploadedFile, setUploadedFile, targetRole, setTargetRole, candidateJobDescription, setCandidateJobDescription, showToast } = useApp();
   const navigate = useNavigate();
 
-  const [jobDescription, setJobDescription] = useState(
-    `Job Title: Data Analyst\nRequired Skills: Python, SQL, Excel, Power BI, Statistics, Pandas\nExperience: 1-3 years\nResponsibilities: Clean transactional data, write complex queries, and build visual dashboards.`
-  );
+  const [jobDescription, setJobDescription] = useState(candidateJobDescription.description);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
 
@@ -41,6 +39,8 @@ export const ResumeUploadPage: React.FC = () => {
 
   const handleStartAnalysis = async () => {
     setIsAnalyzing(true);
+    setCandidateJobDescription((current) => ({ ...current, jobTitle: targetRole, description: jobDescription }));
+    setTargetRole(targetRole);
     setAnalysisStep('Uploading and extracting semantic text layers...');
     try {
       const mockFile = uploadedFile || new File(['mock content'], 'Rose_Infanta_Data_Analyst.pdf', { type: 'application/pdf' });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { sampleEvidenceDetails } from '../data/mockData';
+import { useApp } from '../context/AppContext';
 import { EvidenceCard } from '../components/EvidenceCard';
 import { SkillVerificationQuiz } from '../components/SkillVerificationQuiz';
 import {
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 export const EvidenceCheckerPage: React.FC = () => {
+  const { candidateJobDescription } = useApp();
   const [filterStrength, setFilterStrength] = useState<string>('all');
 
   const filteredEvidence = sampleEvidenceDetails.filter((item) => {
@@ -52,6 +54,10 @@ export const EvidenceCheckerPage: React.FC = () => {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 text-xs text-slate-700">
+        <strong className="text-red-700">Evidence aligned to:</strong> {candidateJobDescription.jobTitle} at {candidateJobDescription.companyName}
       </div>
 
       {/* Summary Metrics Bar */}

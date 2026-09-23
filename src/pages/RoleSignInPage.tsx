@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { RoleType } from '../types';
 import { ArrowRight, Briefcase, Lock, Mail, UserCheck } from 'lucide-react';
+import { isValidEmail, isValidIndianPhone, isValidName, isValidNumber, isValidYear } from '../utils/validators';
 
 interface RoleSignInPageProps {
   role: RoleType;
@@ -76,7 +77,7 @@ export const RoleSignInPage: React.FC<RoleSignInPageProps> = ({ role }) => {
 
     if (step === 'signin') {
       const email = isCandidate ? values.email : values.workEmail;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!isValidEmail(email)) {
         setError('Please enter a valid email address.');
         return;
       }
@@ -93,6 +94,27 @@ export const RoleSignInPage: React.FC<RoleSignInPageProps> = ({ role }) => {
 
       setStep('profile');
       setError(null);
+      return;
+    }
+
+    if (!isValidName(values.fullName)) {
+      setError('Please enter a valid name.');
+      return;
+    }
+    if (isCandidate && values.phone.trim() && !isValidIndianPhone(values.phone)) {
+      setError('Please enter a valid 10-digit phone number.');
+      return;
+    }
+    if (isCandidate && !isValidYear(values.graduationYear)) {
+      setError('Please enter a valid graduation year.');
+      return;
+    }
+    if (!isCandidate && !isValidEmail(values.companyEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!isValidNumber(values.yearsOfExperience)) {
+      setError('Please enter a valid number.');
       return;
     }
 

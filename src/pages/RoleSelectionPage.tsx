@@ -144,9 +144,7 @@ export const RoleSelectionPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Public Resume Check Card */}
         <div
-          onClick={() => navigate('/public-resume-check')}
           className="bg-white rounded-2xl border-2 border-slate-200/80 hover:border-red-600 p-8 cursor-pointer transition-all duration-200 shadow-xs hover:shadow-lg flex flex-col justify-between group"
         >
           <div>
@@ -155,7 +153,6 @@ export const RoleSelectionPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-2xl font-bold text-slate-900">Public Resume Check</h3>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                 No Account
               </span>
@@ -188,7 +185,6 @@ export const RoleSelectionPage: React.FC = () => {
           <div className="mt-8 pt-6 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => navigate('/public-resume-check')}
               className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600 text-white font-bold text-xs group-hover:bg-red-700 transition-colors shadow-xs"
             >
               <span>Check My Resume</span>

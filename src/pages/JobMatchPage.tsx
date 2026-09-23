@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { sampleJobMatch } from '../data/mockData';
+import { useApp } from '../context/AppContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 import {
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 export const JobMatchPage: React.FC = () => {
+  const { candidateJobDescription } = useApp();
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -40,6 +42,10 @@ export const JobMatchPage: React.FC = () => {
             <span>Practice Mock Interview</span>
           </Link>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 text-xs text-slate-700">
+        <strong className="text-red-700">Comparing against:</strong> {candidateJobDescription.jobTitle} at {candidateJobDescription.companyName}
       </div>
 
       {/* Top Alignment Banner */}

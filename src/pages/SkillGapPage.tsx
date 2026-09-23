@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export const SkillGapPage: React.FC = () => {
-  const { targetRole } = useApp();
+  const { targetRole, candidateJobDescription } = useApp();
 
   return (
     <div className="space-y-6">
@@ -43,6 +43,10 @@ export const SkillGapPage: React.FC = () => {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 text-xs text-slate-700">
+        <strong className="text-red-700">Selected JD:</strong> {candidateJobDescription.jobTitle || targetRole} at {candidateJobDescription.companyName || 'selected company'}
       </div>
 
       {/* Target Role & Required Skills Header Banner */}
