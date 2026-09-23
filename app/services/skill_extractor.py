@@ -45,6 +45,8 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "OpenCV": ("opencv",),
     "FFmpeg": ("ffmpeg",),
     "Blockchain": ("blockchain",),
+    "Kubernetes": ("kubernetes", "k8s"),
+    "Redis": ("redis",),
 }
 
 

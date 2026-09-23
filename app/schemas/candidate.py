@@ -42,15 +42,27 @@ class CandidateAnalysisResponse(BaseModel):
     target_role: str
     score_type: str
     requirements_source: str
-    overall_match_score: float | None
-    required_score: float | None
-    preferred_score: float | None
+    role_source: str = "ROLE_CATALOG"
+    analysis_type: str = "ROLE_COMPATIBILITY"
+    match_score: float | None = None
+    overall_match_score: float | None = None
+    required_score: float | None = None
+    preferred_score: float | None = None
     score_status: str
-    detected_skills: list[str]
-    matched_requirements: list[dict[str, Any]]
-    weak_requirements: list[dict[str, Any]]
-    missing_requirements: list[dict[str, Any]]
-    requirement_analysis: list[dict[str, Any]]
-    category_breakdown: dict[str, Any]
-    counts: dict[str, int]
-    skill_gap: dict[str, Any]
+    detected_skills: list[str] = Field(default_factory=list)
+    matched_requirements: list[dict[str, Any]] = Field(default_factory=list)
+    weak_requirements: list[dict[str, Any]] = Field(default_factory=list)
+    missing_requirements: list[dict[str, Any]] = Field(default_factory=list)
+    requirement_analysis: list[dict[str, Any]] = Field(default_factory=list)
+    category_breakdown: dict[str, Any] = Field(default_factory=dict)
+    counts: dict[str, int] = Field(default_factory=dict)
+    skill_gap: dict[str, Any] = Field(default_factory=dict)
+    score_breakdown: dict[str, Any] = Field(default_factory=dict)
+    strong_skills: list[str] = Field(default_factory=list)
+    weak_skills: list[str] = Field(default_factory=list)
+    missing_skills: list[str] = Field(default_factory=list)
+    needs_verification: list[str] = Field(default_factory=list)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    skill_gaps: dict[str, Any] = Field(default_factory=dict)
+    resume_quality: dict[str, Any] = Field(default_factory=dict)
+    improvement_suggestions: list[str] = Field(default_factory=list)

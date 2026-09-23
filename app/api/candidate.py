@@ -43,10 +43,12 @@ from app.services.skill_verification_service import (
     extract_candidate_reported_evidence,
     generate_verification_questions,
 )
-from app.services.role_catalog import role_expectations
+from app.schemas.report import ReportResponse, ReportsResponse
+from app.services.resume_quality_service import analyze_resume_quality
+from app.services.role_catalog import extract_custom_role_expectations, role_expectations
 from app.utils.security import get_candidate_user
 
-router = APIRouter(prefix="/candidate", tags=["Candidate"])
+router = APIRouter(prefix="/candidate", tags=["Candidate", "Candidate Resume Evaluation"])
 
 
 def _candidate_record(user: User, db: Session) -> Candidate:
@@ -75,14 +77,19 @@ def _resume_response(resume: Resume) -> CandidateResumeResponse:
     )
 
 
-def _requirements_for_analysis(payload: CandidateAnalysisRequest) -> tuple[list[object], str, str]:
-    if payload.job_description:
+def _requirements_for_analysis(payload: CandidateAnalysisRequest) -> tuple[list[object], str, str, str]:
+    if payload.job_description and payload.job_description.strip():
         extracted = extract_requirements(payload.job_description)
         requirements = [SimpleNamespace(id=index + 1, **item) for index, item in enumerate(extracted)]
-        return requirements, "COMPANY_JD", "JOB_MATCH"
+        return requirements, "COMPANY_JD", "JOB_MATCH", "JOB_DESCRIPTION"
     expectations = role_expectations(payload.target_role)
-    if expectations is None:
-        raise HTTPException(status_code=422, detail="This role is not in the role expectation catalog; provide a job_description")
+    if expectations is not None:
+        source = "ROLE_BASED_EXPECTATIONS"
+        role_source = "ROLE_CATALOG"
+    else:
+        expectations = extract_custom_role_expectations(payload.target_role)
+        source = "ROLE_BASED_EXPECTATIONS"
+        role_source = "CUSTOM_ROLE"
     records = [
         SimpleNamespace(id=index + 1, requirement=skill, category="SKILL", importance="REQUIRED")
         for index, skill in enumerate(expectations["skills"])
@@ -91,15 +98,105 @@ def _requirements_for_analysis(payload: CandidateAnalysisRequest) -> tuple[list[
         SimpleNamespace(id=len(records) + index + 1, requirement=item, category="RESPONSIBILITY", importance="PREFERRED")
         for index, item in enumerate(expectations["responsibilities"])
     )
-    return records, "ROLE_BASED_EXPECTATIONS", "ROLE_COMPATIBILITY"
+    return records, source, "ROLE_COMPATIBILITY", role_source
 
 
 def _analysis_payload(resume: Resume) -> dict:
-    data = resume.analysis_data or {}
+    data = dict(resume.analysis_data or {})
+    if not data:
+        return data
+    data.setdefault("resume_id", resume.id)
+    data.setdefault("target_role", resume.target_role or "Target Role")
+    data.setdefault("score_type", resume.score_type or "ROLE_COMPATIBILITY")
+    data.setdefault("analysis_type", data.get("score_type", "ROLE_COMPATIBILITY"))
+    data.setdefault("requirements_source", "ROLE_BASED_EXPECTATIONS")
+    data.setdefault(
+        "role_source",
+        "ROLE_CATALOG" if data.get("requirements_source") == "ROLE_BASED_EXPECTATIONS" else "JOB_DESCRIPTION",
+    )
+    data.setdefault("match_score", data.get("overall_match_score"))
+
+    matched = data.get("matched_requirements", [])
+    weak = data.get("weak_requirements", [])
+    missing = data.get("missing_requirements", [])
+
+    if "strong_skills" not in data:
+        data["strong_skills"] = [
+            item.get("requirement", "") for item in matched if item.get("category") == "SKILL"
+        ] or [item.get("requirement", "") for item in matched]
+    if "weak_skills" not in data:
+        data["weak_skills"] = [
+            item.get("requirement", "") for item in weak if item.get("category") == "SKILL"
+        ] or [item.get("requirement", "") for item in weak]
+    if "missing_skills" not in data:
+        data["missing_skills"] = [
+            item.get("requirement", "") for item in missing if item.get("category") == "SKILL"
+        ] or [item.get("requirement", "") for item in missing]
+    if "needs_verification" not in data:
+        data["needs_verification"] = data.get("weak_skills", [])
+
+    if "skill_gaps" not in data:
+        data["skill_gaps"] = {
+            "strong": data.get("strong_skills", []),
+            "weak": data.get("weak_skills", []),
+            "needs_verification": data.get("needs_verification", []),
+            "missing": data.get("missing_skills", []),
+        }
+
+    if "evidence" not in data:
+        data["evidence"] = [
+            {
+                "requirement": item.get("requirement"),
+                "category": item.get("category"),
+                "importance": item.get("importance"),
+                "match_status": item.get("match_status"),
+                "evidence_strength": (
+                    "STRONG"
+                    if item.get("match_status") == MATCHED
+                    else ("WEAK" if item.get("match_status") == WEAK else "MISSING")
+                ),
+                "resume_mention": item.get("match_status") in {MATCHED, WEAK},
+                "project_evidence": bool(
+                    "project" in (item.get("evidence_text") or "").casefold()
+                    or "built" in (item.get("evidence_text") or "").casefold()
+                ),
+                "evidence_text": item.get("evidence_text"),
+            }
+            for item in data.get("requirement_analysis", [])
+        ]
+
+    if "score_breakdown" not in data:
+        cat_breakdown = data.get("category_breakdown", {})
+        data["score_breakdown"] = {
+            "required_skills": data.get("required_score"),
+            "preferred_skills": data.get("preferred_score"),
+            "experience": cat_breakdown.get("EXPERIENCE", {}).get("score", data.get("overall_match_score")),
+            "education": cat_breakdown.get("EDUCATION", {}).get("score", 85.0),
+            "project_relevance": data.get("overall_match_score"),
+            "evidence_strength": data.get("overall_match_score"),
+            **cat_breakdown,
+        }
+
+    if "resume_quality" not in data:
+        quality_findings = analyze_resume_quality(resume.extracted_text or "")
+        data["resume_quality"] = {
+            "findings_count": len(quality_findings),
+            "findings": quality_findings,
+        }
+
+    if "improvement_suggestions" not in data:
+        quality_findings = data.get("resume_quality", {}).get("findings", [])
+        suggestions = [f.get("recommendation") for f in quality_findings if f.get("recommendation")]
+        for m in data.get("missing_skills", [])[:3]:
+            suggestions.append(f"Add demonstrable experience or project work demonstrating {m}.")
+        for w in data.get("weak_skills", [])[:2]:
+            suggestions.append(f"Strengthen evidence for {w} with specific metrics or tooling used.")
+        data["improvement_suggestions"] = list(dict.fromkeys(suggestions))
+
     return data
 
 
-@router.post("/resumes", response_model=CandidateResumeResponse, status_code=201)
+@router.post("/resumes", response_model=CandidateResumeResponse, status_code=201, summary="Upload a candidate standalone resume")
 def upload_candidate_resume(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -143,23 +240,23 @@ def upload_candidate_resume(
         raise HTTPException(status_code=400, detail="Could not process resume") from exc
 
 
-@router.get("/resumes", response_model=list[CandidateResumeResponse])
+@router.get("/resumes", response_model=list[CandidateResumeResponse], summary="List all standalone resumes of the authenticated candidate")
 def list_candidate_resumes(db: Session = Depends(get_db), current_user: User = Depends(get_candidate_user)) -> list[CandidateResumeResponse]:
     resumes = db.query(Resume).filter(Resume.candidate_user_id == current_user.id).order_by(Resume.id).all()
     return [_resume_response(resume) for resume in resumes]
 
 
-@router.get("/resumes/{resume_id}", response_model=CandidateResumeResponse)
+@router.get("/resumes/{resume_id}", response_model=CandidateResumeResponse, summary="Get details of a candidate's resume")
 def get_candidate_resume(resume_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_candidate_user)) -> CandidateResumeResponse:
     return _resume_response(_get_candidate_resume(resume_id, current_user, db))
 
 
-@router.get("/me")
+@router.get("/me", summary="Get authenticated candidate user details")
 def candidate_me(current_user: User = Depends(get_candidate_user)) -> dict:
     return {"id": current_user.id, "name": current_user.name, "email": current_user.email, "role": current_user.role, "created_at": current_user.created_at}
 
 
-@router.post("/analysis/{resume_id}", response_model=CandidateAnalysisResponse)
+@router.post("/analysis/{resume_id}", response_model=CandidateAnalysisResponse, summary="Perform standalone resume evaluation")
 def analyze_candidate_resume(
     resume_id: int,
     payload: CandidateAnalysisRequest,
@@ -167,7 +264,7 @@ def analyze_candidate_resume(
     current_user: User = Depends(get_candidate_user),
 ) -> CandidateAnalysisResponse:
     resume = _get_candidate_resume(resume_id, current_user, db)
-    requirements, source, score_type = _requirements_for_analysis(payload)
+    requirements, source, score_type, role_source = _requirements_for_analysis(payload)
     if not requirements:
         raise HTTPException(status_code=422, detail="No analyzable requirements were found")
     requirement_context = [
@@ -184,25 +281,91 @@ def analyze_candidate_resume(
     def compute_analysis() -> dict:
         matches = match_resume_to_requirements(resume.extracted_text or "", requirements)
         score = calculate_candidate_score(matches)
+        detected = extract_skills(resume.extracted_text or "")
+        gap_summary = generate_skill_gap_summary(matches)
+        quality_findings = analyze_resume_quality(resume.extracted_text or "")
+
+        matched_reqs = [item for item in matches if item["match_status"] == MATCHED]
+        weak_reqs = [item for item in matches if item["match_status"] == WEAK]
+        missing_reqs = [item for item in matches if item["match_status"] == MISSING]
+
+        strong_skills = [item["requirement"] for item in matched_reqs if item.get("category") == "SKILL"] or [item["requirement"] for item in matched_reqs]
+        weak_skills = [item["requirement"] for item in weak_reqs if item.get("category") == "SKILL"] or [item["requirement"] for item in weak_reqs]
+        missing_skills = [item["requirement"] for item in missing_reqs if item.get("category") == "SKILL"] or [item["requirement"] for item in missing_reqs]
+
+        needs_verification = [item["requirement"] for item in weak_reqs if item.get("importance") == "REQUIRED"] or weak_skills
+
+        evidence_list = [
+            {
+                "requirement": item.get("requirement"),
+                "category": item.get("category"),
+                "importance": item.get("importance"),
+                "match_status": item.get("match_status"),
+                "evidence_strength": "STRONG" if item.get("match_status") == MATCHED else ("WEAK" if item.get("match_status") == WEAK else "MISSING"),
+                "resume_mention": item.get("match_status") in {MATCHED, WEAK},
+                "project_evidence": bool("project" in (item.get("evidence_text") or "").casefold() or "built" in (item.get("evidence_text") or "").casefold()),
+                "evidence_text": item.get("evidence_text"),
+            }
+            for item in score.get("requirement_analysis", [])
+        ]
+
+        cat_breakdown = score.get("category_breakdown", {})
+        score_breakdown = {
+            "required_skills": score.get("required_score"),
+            "preferred_skills": score.get("preferred_score"),
+            "experience": cat_breakdown.get("EXPERIENCE", {}).get("score", score.get("overall_match_score")),
+            "education": cat_breakdown.get("EDUCATION", {}).get("score", 85.0),
+            "project_relevance": score.get("overall_match_score"),
+            "evidence_strength": score.get("overall_match_score"),
+            **cat_breakdown,
+        }
+
+        suggestions = [f.get("recommendation") for f in quality_findings if f.get("recommendation")]
+        for m in missing_skills[:3]:
+            suggestions.append(f"Add demonstrable experience or project work demonstrating {m}.")
+        for w in weak_skills[:2]:
+            suggestions.append(f"Strengthen evidence for {w} with specific metrics or tooling used.")
+
         return {
             "target_role": payload.target_role,
             "requirements_source": source,
+            "role_source": role_source,
             "score_type": score_type,
+            "analysis_type": score_type,
+            "match_score": score.get("overall_match_score"),
             "overall_match_score": score.get("overall_match_score"),
             "required_score": score.get("required_score"),
             "preferred_score": score.get("preferred_score"),
             "score_status": score.get("score_status"),
-            "detected_skills": extract_skills(resume.extracted_text or ""),
-            "matched_requirements": [item for item in matches if item["match_status"] == MATCHED],
-            "weak_requirements": [item for item in matches if item["match_status"] == WEAK],
-            "missing_requirements": [item for item in matches if item["match_status"] == MISSING],
+            "detected_skills": detected,
+            "matched_requirements": matched_reqs,
+            "weak_requirements": weak_reqs,
+            "missing_requirements": missing_reqs,
             "requirement_analysis": score.get("requirement_analysis", []),
-            "category_breakdown": score.get("category_breakdown", {}),
+            "category_breakdown": cat_breakdown,
             "counts": score.get("counts", {}),
-            "skill_gap": generate_skill_gap_summary(matches),
+            "skill_gap": gap_summary,
+            "score_breakdown": score_breakdown,
+            "strong_skills": strong_skills,
+            "weak_skills": weak_skills,
+            "missing_skills": missing_skills,
+            "needs_verification": needs_verification,
+            "evidence": evidence_list,
+            "skill_gaps": {
+                "strong": strong_skills,
+                "weak": weak_skills,
+                "needs_verification": needs_verification,
+                "missing": missing_skills,
+            },
+            "resume_quality": {
+                "findings_count": len(quality_findings),
+                "findings": quality_findings,
+            },
+            "improvement_suggestions": list(dict.fromkeys(suggestions)),
         }
 
-    data = analysis_cache.get_or_compute(cache_key, compute_analysis)
+    data = dict(analysis_cache.get_or_compute(cache_key, compute_analysis))
+    data["resume_id"] = resume.id
     score = {"overall_match_score": data["overall_match_score"]}
     resume.target_role = payload.target_role
     resume.target_job_description = payload.job_description
@@ -219,13 +382,67 @@ def analyze_candidate_resume(
         )
     )
     db.commit()
-    return CandidateAnalysisResponse(resume_id=resume.id, **data)
+    return CandidateAnalysisResponse(**data)
 
 
-@router.get("/analyses", response_model=list[CandidateAnalysisResponse])
+@router.get("/analysis/{resume_id}", response_model=CandidateAnalysisResponse, summary="Retrieve a candidate's standalone resume analysis")
+def get_candidate_analysis(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_candidate_user),
+) -> CandidateAnalysisResponse:
+    resume = _get_candidate_resume(resume_id, current_user, db)
+    if not resume.analysis_data:
+        raise HTTPException(status_code=404, detail="Analysis not found for this resume")
+    return CandidateAnalysisResponse(**_analysis_payload(resume))
+
+
+@router.get("/analyses", response_model=list[CandidateAnalysisResponse], summary="List all standalone analyses of the authenticated candidate")
 def list_candidate_analyses(db: Session = Depends(get_db), current_user: User = Depends(get_candidate_user)) -> list[CandidateAnalysisResponse]:
     resumes = db.query(Resume).filter(Resume.candidate_user_id == current_user.id, Resume.analysis_data.isnot(None)).order_by(Resume.id).all()
-    return [CandidateAnalysisResponse(resume_id=resume.id, **_analysis_payload(resume)) for resume in resumes]
+    return [CandidateAnalysisResponse(**_analysis_payload(resume)) for resume in resumes]
+
+
+@router.get("/reports/{resume_id}", response_model=ReportsResponse, summary="Get candidate personal report")
+def get_candidate_report(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_candidate_user),
+) -> ReportsResponse:
+    resume = _get_candidate_resume(resume_id, current_user, db)
+    from app.api.reports import _get_reports, _response as _report_response
+    reports = [report for report in _get_reports(resume.id, db) if report.report_type == "CANDIDATE"]
+    return ReportsResponse(
+        resume_id=resume.id,
+        reports={report.report_type: _report_response(report) for report in reports},
+    )
+
+
+@router.post("/reports/{resume_id}/generate", response_model=ReportsResponse, summary="Generate candidate personal report")
+def generate_candidate_report(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_candidate_user),
+) -> ReportsResponse:
+    resume = _get_candidate_resume(resume_id, current_user, db)
+    from app.api.reports import _generate_reports, _get_reports, _response as _report_response
+    existing = {report.report_type: report for report in _get_reports(resume.id, db) if report.report_type == "CANDIDATE"}
+    if existing:
+        return ReportsResponse(
+            resume_id=resume.id,
+            reports={"CANDIDATE": _report_response(existing["CANDIDATE"])},
+        )
+    result = _generate_reports(resume.id, db, ("CANDIDATE",))
+    record_audit_event(
+        db,
+        "REPORT_GENERATED",
+        user_id=current_user.id,
+        role=current_user.role,
+        resource_type="resume",
+        resource_id=resume.id,
+        success=True,
+    )
+    return result
 
 
 def _candidate_matches(resume: Resume) -> list[dict]:

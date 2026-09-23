@@ -59,6 +59,8 @@ SKILLS = (
     "Git",
     "C++",
     "C",
+    "Kubernetes",
+    "Redis",
 )
 
 EDUCATION = (

@@ -19,7 +19,7 @@ def build_career_intelligence(
     alignment = "STRONG" if len(matched) >= max(1, int(analysis.get("counts", {}).get("total", 0) * 0.75)) else "MODERATE" if matched else "LIMITED"
     return {
         "target_role": target_role,
-        "role_type": "ROLE_BASED_EXPECTATIONS" if analysis.get("requirements_source") == "ROLE_BASED_EXPECTATIONS" else "COMPANY_JD",
+        "role_type": "ROLE_BASED_EXPECTATIONS" if analysis.get("requirements_source") in ("ROLE_BASED_EXPECTATIONS", "CUSTOM_ROLE") else "COMPANY_JD",
         "role_alignment": {"status": alignment, "reason": f"{len(matched)} requirement(s) are currently supported by the analysis."},
         "top_supported_skills": matched[:5],
         "priority_gaps": priority_gaps,

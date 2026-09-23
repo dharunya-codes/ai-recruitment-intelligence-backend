@@ -67,3 +67,24 @@ def make_analysis_cache_key(
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def make_web_search_cache_key(
+    *,
+    search_type: str,
+    query: str,
+    location: str | None = None,
+    company: str | None = None,
+    limit: int = 10,
+    config_version: str = ANALYSIS_CACHE_VERSION,
+) -> str:
+    payload = {
+        "search_type": search_type,
+        "query": query.casefold().strip(),
+        "location": (location or "").casefold().strip(),
+        "company": (company or "").casefold().strip(),
+        "limit": limit,
+        "config_version": config_version,
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
