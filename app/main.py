@@ -15,7 +15,11 @@ from app.api.reports import router as reports_router
 from app.api.candidate import router as candidate_router
 from app.api.intelligence import router as intelligence_router
 from app.api.verification import router as verification_router
-from app.api.web_intelligence import candidate_web_router, recruiter_web_router
+from app.api.web_intelligence import (
+    candidate_web_router,
+    intelligence_router as web_intelligence_router,
+    recruiter_web_router,
+)
 from app.database.init_db import init_db
 from app.services.rate_limit_service import rate_limiter
 
@@ -62,7 +66,7 @@ async def security_and_rate_limit(request: Request, call_next):
         bucket, limit = "registration", int(os.getenv("RATE_LIMIT_REGISTRATION_PER_MINUTE", "60"))
     elif path.endswith("/resumes") and request.method == "POST":
         bucket, limit = "upload", int(os.getenv("RATE_LIMIT_UPLOAD_PER_MINUTE", "60"))
-    elif any(marker in path for marker in ("/web-intelligence/", "/candidate-discovery")):
+    elif any(marker in path for marker in ("/web-intelligence/", "/candidate-discovery", "/intelligence/")):
         bucket, limit = "web_intelligence", int(os.getenv("RATE_LIMIT_WEB_INTELLIGENCE_PER_MINUTE", "60"))
     elif any(marker in path for marker in ("/generate", "/regenerate", "/career-question", "/multi-job")):
         bucket, limit = "expensive", int(os.getenv("RATE_LIMIT_EXPENSIVE_PER_MINUTE", "120"))
@@ -89,6 +93,7 @@ app.include_router(reports_router)
 app.include_router(candidate_router)
 app.include_router(intelligence_router)
 app.include_router(verification_router)
+app.include_router(web_intelligence_router)
 app.include_router(candidate_web_router)
 app.include_router(recruiter_web_router)
 

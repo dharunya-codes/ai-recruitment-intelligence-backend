@@ -410,12 +410,10 @@ def get_candidate_report(
     current_user: User = Depends(get_candidate_user),
 ) -> ReportsResponse:
     resume = _get_candidate_resume(resume_id, current_user, db)
-    from app.api.reports import _get_reports, _response as _report_response
-    reports = [report for report in _get_reports(resume.id, db) if report.report_type == "CANDIDATE"]
-    return ReportsResponse(
-        resume_id=resume.id,
-        reports={report.report_type: _report_response(report) for report in reports},
-    )
+    from app.api.reports import _format_reports_response
+    from app.services.report_service import ReportService
+    reports = ReportService(db).get_reports(resume.id, "candidate")
+    return _format_reports_response(resume.id, reports)
 
 
 @router.post("/reports/{resume_id}/generate", response_model=ReportsResponse, summary="Generate candidate personal report")
@@ -425,14 +423,13 @@ def generate_candidate_report(
     current_user: User = Depends(get_candidate_user),
 ) -> ReportsResponse:
     resume = _get_candidate_resume(resume_id, current_user, db)
-    from app.api.reports import _generate_reports, _get_reports, _response as _report_response
-    existing = {report.report_type: report for report in _get_reports(resume.id, db) if report.report_type == "CANDIDATE"}
+    from app.api.reports import _format_reports_response
+    from app.services.report_service import ReportService
+    service = ReportService(db)
+    existing = service.get_reports(resume.id, "candidate")
     if existing:
-        return ReportsResponse(
-            resume_id=resume.id,
-            reports={"CANDIDATE": _report_response(existing["CANDIDATE"])},
-        )
-    result = _generate_reports(resume.id, db, ("CANDIDATE",))
+        return _format_reports_response(resume.id, existing)
+    service.generate_candidate_report(resume.id)
     record_audit_event(
         db,
         "REPORT_GENERATED",
@@ -442,7 +439,8 @@ def generate_candidate_report(
         resource_id=resume.id,
         success=True,
     )
-    return result
+    reports = service.get_reports(resume.id, "candidate")
+    return _format_reports_response(resume.id, reports)
 
 
 def _candidate_matches(resume: Resume) -> list[dict]:

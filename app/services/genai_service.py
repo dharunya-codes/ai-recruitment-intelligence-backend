@@ -175,6 +175,174 @@ Format as a JSON array of strings: ["Tip 1", "Tip 2"]"""
                 pass
         return deterministic_suggestions
 
+    def generate_company_ai_summary(self, context: dict[str, Any]) -> tuple[dict[str, Any], str]:
+        """Generate grounded structured AI summary for the Company report."""
+        analysis = context.get("resume_analysis", {})
+        job = context.get("job", {})
+        candidate = context.get("candidate", {})
+        assessment = context.get("assessment", {})
+        verification = context.get("verification", [])
+        evidence = context.get("evidence", [])
+
+        strong_skills = [item.get("requirement") for item in analysis.get("matched_requirements", [])]
+        weak_skills = [item.get("requirement") for item in analysis.get("weak_requirements", [])]
+        missing_skills = [item.get("requirement") for item in analysis.get("missing_requirements", [])]
+        all_gaps = weak_skills + missing_skills
+
+        evidence_text_summary = (
+            f"Resume evidence detected for {len(evidence)} skill(s)."
+            if evidence
+            else "Limited explicit project or role evidence detected in the resume."
+        )
+        assessment_text_summary = (
+            f"Assessment status: {assessment.get('status', 'not_completed')}, score: {assessment.get('score', 'N/A')}."
+            if assessment.get("status") in {"EVALUATED", "SUBMITTED"}
+            else "Assessment has not been completed."
+        )
+
+        fallback_summary = {
+            "candidate_summary": (
+                f"Candidate {candidate.get('name', 'Profile')} evaluation for {job.get('title', 'Target Role')}. "
+                f"Demonstrates {analysis.get('counts', {}).get('matched', 0)} of {analysis.get('counts', {}).get('total', 0)} required competencies."
+            ),
+            "relevant_strengths": strong_skills,
+            "evidence_summary": evidence_text_summary,
+            "skill_gaps": all_gaps,
+            "assessment_summary": assessment_text_summary,
+        }
+
+        if not self.is_configured():
+            return fallback_summary, "GENAI_NOT_CONFIGURED"
+
+        prompt = f"""You are generating an objective, grounded summary for a company recruitment intelligence report.
+
+CRITICAL INSTRUCTIONS:
+- Ground every statement ONLY on the provided structured input data.
+- NEVER invent, assume, or fabricate candidate skills, work experience, companies, job titles, internships, certifications, projects, or assessment achievements.
+- Do not convert candidate-reported evidence into resume evidence.
+- Do not convert assessment performance into professional experience.
+- Do not make Hire or Reject decisions.
+
+Structured Input Data:
+Candidate Name: {candidate.get('name')}
+Role: {job.get('title')}
+Match Score: {analysis.get('overall_match_score')}
+Demonstrated Skills in Resume: {strong_skills}
+Skills with Limited Evidence: {weak_skills}
+Missing Requirements: {missing_skills}
+Evidence items: {len(evidence)}
+Verification items: {len(verification)}
+Assessment Status: {assessment.get('status')} (Score: {assessment.get('score')})
+
+Return a JSON object matching this exact structure:
+{{
+    "candidate_summary": "2-3 sentences objective candidate profile overview for recruiter review",
+    "relevant_strengths": {json.dumps(strong_skills)},
+    "evidence_summary": "1-2 sentences summarizing resume evidence vs candidate-reported evidence",
+    "skill_gaps": {json.dumps(all_gaps)},
+    "assessment_summary": "1-2 sentences summarizing assessment performance and status"
+}}"""
+
+        text, status = self._call_gemini(prompt)
+        if status == "GENAI_SUCCESS" and text:
+            try:
+                cleaned = text.strip()
+                if cleaned.startswith("```json"):
+                    cleaned = cleaned.removeprefix("```json").removesuffix("```").strip()
+                elif cleaned.startswith("```"):
+                    cleaned = cleaned.removeprefix("```").removesuffix("```").strip()
+                parsed = json.loads(cleaned)
+                if isinstance(parsed, dict) and "candidate_summary" in parsed:
+                    return {
+                        "candidate_summary": str(parsed.get("candidate_summary", fallback_summary["candidate_summary"])),
+                        "relevant_strengths": strong_skills,
+                        "evidence_summary": str(parsed.get("evidence_summary", fallback_summary["evidence_summary"])),
+                        "skill_gaps": all_gaps,
+                        "assessment_summary": str(parsed.get("assessment_summary", fallback_summary["assessment_summary"])),
+                    }, "GENAI_SUCCESS"
+            except Exception:
+                pass
+        return fallback_summary, status
+
+    def generate_candidate_ai_summary(self, context: dict[str, Any]) -> tuple[dict[str, Any], str]:
+        """Generate grounded structured AI summary for the Candidate report."""
+        analysis = context.get("resume_analysis", {})
+        job = context.get("job", {})
+        assessment = context.get("assessment", {})
+
+        strong_skills = [item.get("requirement") for item in analysis.get("matched_requirements", [])]
+        weak_skills = [item.get("requirement") for item in analysis.get("weak_requirements", [])]
+        missing_skills = [item.get("requirement") for item in analysis.get("missing_requirements", [])]
+        resume_improvements = self._resume_improvements(context)
+        assessment_feedback = assessment.get("areas_for_improvement", []) or assessment.get("strengths", [])
+
+        fallback_guidance = (
+            f"Focus on strengthening evidence for {', '.join((weak_skills + missing_skills)[:3]) or 'target competencies'} "
+            "by completing concrete projects and documenting specific contributions."
+        )
+
+        fallback_summary = {
+            "strong_skills": strong_skills,
+            "weak_skills": weak_skills,
+            "missing_skills": missing_skills,
+            "resume_improvement_suggestions": resume_improvements,
+            "assessment_feedback": assessment_feedback,
+            "career_improvement_guidance": fallback_guidance,
+        }
+
+        if not self.is_configured():
+            return fallback_summary, "GENAI_NOT_CONFIGURED"
+
+        prompt = f"""You are generating a constructive, personalized career development summary for a candidate report.
+
+CRITICAL INSTRUCTIONS:
+- Ground every statement ONLY on the provided structured input data.
+- NEVER invent, assume, or fabricate candidate skills, work experience, companies, job titles, internships, certifications, projects, or assessment achievements.
+- Do not convert candidate-reported evidence into resume evidence.
+- Do not convert assessment performance into professional experience.
+- Do not make Hire or Reject decisions.
+
+Structured Input Data:
+Role Target: {job.get('title')}
+Match Score: {analysis.get('overall_match_score')}
+Demonstrated Skills: {strong_skills}
+Skills with Limited Evidence: {weak_skills}
+Missing Skills: {missing_skills}
+Resume Improvements: {resume_improvements}
+Assessment Feedback: {assessment_feedback}
+
+Return a JSON object matching this exact structure:
+{{
+    "strong_skills": {json.dumps(strong_skills)},
+    "weak_skills": {json.dumps(weak_skills)},
+    "missing_skills": {json.dumps(missing_skills)},
+    "resume_improvement_suggestions": {json.dumps(resume_improvements)},
+    "assessment_feedback": {json.dumps(assessment_feedback)},
+    "career_improvement_guidance": "2-3 sentences of actionable, realistic career development guidance focused on the identified skill gaps"
+}}"""
+
+        text, status = self._call_gemini(prompt)
+        if status == "GENAI_SUCCESS" and text:
+            try:
+                cleaned = text.strip()
+                if cleaned.startswith("```json"):
+                    cleaned = cleaned.removeprefix("```json").removesuffix("```").strip()
+                elif cleaned.startswith("```"):
+                    cleaned = cleaned.removeprefix("```").removesuffix("```").strip()
+                parsed = json.loads(cleaned)
+                if isinstance(parsed, dict) and "career_improvement_guidance" in parsed:
+                    return {
+                        "strong_skills": strong_skills,
+                        "weak_skills": weak_skills,
+                        "missing_skills": missing_skills,
+                        "resume_improvement_suggestions": parsed.get("resume_improvement_suggestions") or resume_improvements,
+                        "assessment_feedback": parsed.get("assessment_feedback") or assessment_feedback,
+                        "career_improvement_guidance": str(parsed.get("career_improvement_guidance", fallback_guidance)),
+                    }, "GENAI_SUCCESS"
+            except Exception:
+                pass
+        return fallback_summary, status
+
     def generate_reports(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         Generate explainable candidate and HR reports using Gemini 2.5 Flash
